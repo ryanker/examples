@@ -1,0 +1,71 @@
+name: lint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  fmt:
+    name: rustfmt check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    name: clippy check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-clippy-${{ matrix.version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-clippy-${{ matrix.version }}-
+
+      - name: cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: cargo-index-clippy-${{ matrix.version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-index-clippy-${{ matrix.version }}-
+
+      - name: cache cargo target
+        uses: actions/cache@v1
+        with:
+          path: ./target/debug
+          key: cargo-registry-clippy-${{ matrix.version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-clippy-${{ matrix.version }}-
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+          override: true
+
+      - name: clippy
+        uses: actions-rs/clippy-check@v1
+        timeout-minutes: 40
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --workspace --all-features --tests
